@@ -54,9 +54,9 @@ class WyomingSatelliteMicGainNumber(VASatelliteEntity, RestoreNumber):
         entity_category=EntityCategory.CONFIG,
     )
     _attr_should_poll = False
-    _attr_native_min_value = 1
-    _attr_native_max_value = _MAX_MIC_GAIN
-    _attr_native_value = 1
+    _attr_native_min_value = -10
+    _attr_native_max_value = 10
+    _attr_native_value = 0
 
     async def async_added_to_hass(self) -> None:
         """When entity is added to Home Assistant."""
@@ -68,7 +68,7 @@ class WyomingSatelliteMicGainNumber(VASatelliteEntity, RestoreNumber):
 
     async def async_set_native_value(self, value: float) -> None:
         """Set new value."""
-        mic_gain = int(max(1, min(_MAX_MIC_GAIN, value)))
+        mic_gain = int(max(-10, min(10, value)))
         self._attr_native_value = mic_gain
         self.async_write_ha_state()
         self._device.set_custom_setting("mic_gain", mic_gain)
