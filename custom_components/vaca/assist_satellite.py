@@ -111,9 +111,6 @@ class ViewAssistSatelliteEntity(WyomingAssistSatellite, VASatelliteEntity):
 
     async def on_before_send_event_callback(self, event: Event) -> None:
         """Allow injection of events before event sent."""
-
-    async def on_after_send_event_callback(self, event: Event) -> None:
-        """Allow injection of events after event sent."""
         if RunSatellite().is_type(event.type):
             # Update url and port
             self.device.custom_settings["ha_port"] = self.hass.config.api.port
@@ -124,6 +121,9 @@ class ViewAssistSatelliteEntity(WyomingAssistSatellite, VASatelliteEntity):
             await self._client.write_event(
                 CustomSettings(self.device.custom_settings).event()
             )
+
+    async def on_after_send_event_callback(self, event: Event) -> None:
+        """Allow injection of events after event sent."""
 
     async def on_receive_event_callback(self, event: Event) -> None:
         """Handle received custom events."""
