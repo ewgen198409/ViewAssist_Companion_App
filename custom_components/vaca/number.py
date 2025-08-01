@@ -213,7 +213,7 @@ class WyomingSatelliteWakeWordThresholdNumber(VASatelliteEntity, RestoreNumber):
     _attr_should_poll = False
     _attr_native_min_value = 0
     _attr_native_max_value = 10
-    _attr_native_value = 8
+    _attr_native_value = 6
 
     async def async_added_to_hass(self) -> None:
         """When entity is added to Home Assistant."""
