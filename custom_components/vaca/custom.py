@@ -103,3 +103,24 @@ class CustomStatus(Eventable):
     def from_event(event: Event) -> "CustomStatus":
         """Create a CustomSensorValue instance from an event."""
         return CustomStatus(data=event.data)
+
+
+@dataclass
+class CustomCapabilities(Eventable):
+    """Custom capabilities event."""
+
+    capabilities: Any | None = None
+
+    @staticmethod
+    def is_type(event_type: str) -> bool:
+        """Check if the event type is a custom capabilities event."""
+        return event_type == "capabilities"
+
+    def event(self) -> Event:
+        """Create an event for custom describe."""
+        return Event(type="capabilities")
+
+    @staticmethod
+    def from_event(event: Event) -> "CustomCapabilities":
+        """Create a CustomCapabilities instance from an event."""
+        return CustomCapabilities(capabilities=event.data)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 
 from homeassistant.components.wyoming import (
@@ -9,6 +10,7 @@ from homeassistant.components.wyoming import (
     WyomingService,
     async_register_websocket_api,
 )
+from homeassistant.components.wyoming.error import WyomingError
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
@@ -16,7 +18,9 @@ from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import config_validation as cv, device_registry as dr
 from homeassistant.helpers.typing import ConfigType
 
+from .client import VAAsyncTcpClient
 from .const import ATTR_SPEAKER, DOMAIN
+from .custom import CustomCapabilities
 from .devices import VASatelliteDevice
 
 _LOGGER = logging.getLogger(__name__)
@@ -57,6 +61,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         raise ConfigEntryNotReady("Unable to connect")
 
     item = DomainDataItem(service=service)
+
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = item
 
     await hass.config_entries.async_forward_entry_setups(entry, service.platforms)
@@ -79,6 +84,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             satellite_id=satellite_id,
             device_id=device.id,
         )
+        item.device.capabilities = await get_device_capabilities(item)
 
         # Set up satellite entity, sensors, switches, etc.
         await hass.config_entries.async_forward_entry_setups(entry, SATELLITE_PLATFORMS)
@@ -104,3 +110,35 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         del hass.data[DOMAIN][entry.entry_id]
 
     return unload_ok
+
+
+async def get_device_capabilities(item: DomainDataItem):
+    """Get device capabilities."""
+    capabilities: CustomCapabilities | None = None
+
+    for _ in range(4):
+        try:
+            async with (
+                VAAsyncTcpClient(item.service.host, item.service.port) as client,
+                asyncio.timeout(1),
+            ):
+                # Describe -> Info
+                await client.write_event(CustomCapabilities().event())
+                while True:
+                    event = await client.read_event()
+                    if event is None:
+                        raise WyomingError(  # noqa: TRY301
+                            "Connection closed unexpectedly",
+                        )
+
+                    if CustomCapabilities.is_type(event.type):
+                        capabilities = CustomCapabilities.from_event(event)
+                        break  # while
+
+                if capabilities is not None:
+                    break  # for
+        except (TimeoutError, OSError, WyomingError):
+            # Sleep and try again
+            await asyncio.sleep(2)
+
+    return capabilities.capabilities

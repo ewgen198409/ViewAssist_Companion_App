@@ -8,6 +8,7 @@ import logging
 import time
 from typing import Final
 import wave
+import json
 
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
 from wyoming.event import Event
@@ -25,6 +26,7 @@ from homeassistant.components.wyoming import DomainDataItem, WyomingService
 
 # pylint: disable-next=hass-component-root-import
 from homeassistant.components.wyoming.assist_satellite import WyomingAssistSatellite
+from homeassistant.components.wyoming.data import Info
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_send
@@ -125,8 +127,9 @@ class ViewAssistSatelliteEntity(WyomingAssistSatellite, VASatelliteEntity):
     async def on_after_send_event_callback(self, event: Event) -> None:
         """Allow injection of events after event sent."""
 
-    async def on_receive_event_callback(self, event: Event) -> None:
+    async def on_receive_event_callback(self, event: Event) -> Event | None:
         """Handle received custom events."""
+
         if event and CustomStatus.is_type(event.type):
             # Custom status event
             status = CustomStatus.from_event(event)
@@ -139,6 +142,7 @@ class ViewAssistSatelliteEntity(WyomingAssistSatellite, VASatelliteEntity):
                 f"{DOMAIN}_{self.device.device_id}_status_update",
                 status.data,
             )
+        return None
 
     async def _connect(self) -> None:
         """Connect to satellite over TCP.  Uses custom TCP client to allow callbacks on send."""

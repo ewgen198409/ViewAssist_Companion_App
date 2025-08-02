@@ -32,10 +32,11 @@ class VAAsyncTcpClient(AsyncTcpClient):
 
     async def read_event(self) -> Event:
         """Read an event from the server."""
+        modified_event = None
         event = await super().read_event()
         if self._on_receive_callback:
-            await self._on_receive_callback(event)
-        return event
+            modified_event = await self._on_receive_callback(event)
+        return modified_event if modified_event else event
 
     def can_write_event(self) -> bool:
         """Check if the client can write an event."""
