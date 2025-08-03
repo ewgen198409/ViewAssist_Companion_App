@@ -38,7 +38,6 @@ from .custom import (
     CAPABILITIES_EVENT_TYPE,
     SETTINGS_EVENT_TYPE,
     CustomEvent,
-    CustomStatus,
 )
 from .devices import VASatelliteDevice
 from .entity import VASatelliteEntity
@@ -135,30 +134,24 @@ class ViewAssistSatelliteEntity(WyomingAssistSatellite, VASatelliteEntity):
 
     async def on_receive_event_callback(self, event: Event) -> Event | None:
         """Handle received custom events."""
-
-        if event and CustomStatus.is_type(event.type):
-            status = CustomStatus.from_event(event)
-            _LOGGER.debug(
-                "Received status event: %s",
-                status.data,
-            )
-            async_dispatcher_send(
-                self.hass,
-                f"{DOMAIN}_{self.device.device_id}_status_update",
-                status.data,
-            )
-
-        elif event and CustomEvent.is_type(event.type):
+        if event and CustomEvent.is_type(event.type):
             # Custom event
             evt = CustomEvent.from_event(event)
 
             if evt.event_type == CAPABILITIES_EVENT_TYPE:
                 self.device.capabilities = evt.event_data
-                async_dispatcher_send(
-                    self.hass,
-                    f"{DOMAIN}_{self.device.device_id}_{evt.event_type}_update",
+
+            elif evt.event_type == SETTINGS_EVENT_TYPE:
+                _LOGGER.debug(
+                    "Received status event: %s",
                     evt.event_data,
                 )
+
+            async_dispatcher_send(
+                self.hass,
+                f"{DOMAIN}_{self.device.device_id}_{evt.event_type}_update",
+                evt.event_data,
+            )
 
         return None
 
