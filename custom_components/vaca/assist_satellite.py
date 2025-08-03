@@ -34,11 +34,10 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from .client import VAAsyncTcpClient
 from .const import DOMAIN, SAMPLE_CHANNELS, SAMPLE_WIDTH
 from .custom import (
+    ACTION_EVENT_TYPE,
     CAPABILITIES_EVENT_TYPE,
     SETTINGS_EVENT_TYPE,
-    CustomAction,
     CustomEvent,
-    CustomSettings,
     CustomStatus,
 )
 from .devices import VASatelliteDevice
@@ -354,7 +353,8 @@ class ViewAssistSatelliteEntity(WyomingAssistSatellite, VASatelliteEntity):
                 self.hass,
                 self._client.write_event(
                     CustomEvent(
-                        SETTINGS_EVENT_TYPE, self.device.custom_settings
+                        SETTINGS_EVENT_TYPE,
+                        {SETTINGS_EVENT_TYPE: self.device.custom_settings},
                     ).event()
                 ),
                 "custom settings event",
@@ -368,7 +368,10 @@ class ViewAssistSatelliteEntity(WyomingAssistSatellite, VASatelliteEntity):
             self.config_entry.async_create_background_task(
                 self.hass,
                 self._client.write_event(
-                    CustomAction(action=command, payload=payload).event()
+                    CustomEvent(
+                        ACTION_EVENT_TYPE,
+                        {"action": command, "payload": payload},
+                    ).event()
                 ),
                 "media player command",
             )

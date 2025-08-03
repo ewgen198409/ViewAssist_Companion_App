@@ -38,7 +38,7 @@ class CustomEvent(Eventable):
         """Create an event for the custom event."""
         data = {"event_type": self.event_type}
         if self.event_data is not None:
-            data[self.event_type] = self.event_data
+            data.update(self.event_data)
         return Event(
             type=_CUSTOM_EVENT_TYPE,
             data=data,
