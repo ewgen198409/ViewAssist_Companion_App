@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+import json
 from typing import Any
 
 from homeassistant.components.wyoming import SatelliteDevice
@@ -71,3 +72,12 @@ class VASatelliteDevice(SatelliteDevice):
     def set_tts_listener(self, tts_listener: Callable[[str], None]) -> None:
         """Listen for stt updates."""
         self.tts_listener = tts_listener
+
+    def has_light_sensor(self) -> bool:
+        """Check if the device has a light sensor."""
+        if sensors := self.capabilities.get("sensors"):
+            for sensor in sensors:
+                sensor = json.loads(sensor)
+                if sensor.get("type") == 5:  # Light sensor type
+                    return True
+        return False

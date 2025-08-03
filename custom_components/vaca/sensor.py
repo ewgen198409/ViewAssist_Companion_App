@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 from functools import reduce
+import json
 import logging
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.components.sensor import RestoreSensor, SensorEntityDescription
 from homeassistant.components.sensor.const import SensorDeviceClass
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import LIGHT_LUX, PERCENTAGE
+from homeassistant.const import LIGHT_LUX, PERCENTAGE, EntityCategory
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
@@ -40,13 +41,17 @@ async def async_setup_entry(
         WyomingSatelliteSTTSensor(item.device),
         WyomingSatelliteTTSSensor(item.device),
         WyomingSatelliteIntentSensor(item.device),
-        WyomingSatelliteLightSensor(item.device),
         WyomingSatelliteOrientationSensor(item.device),
     ]
 
-    if item.device.capabilities and item.device.capabilities.get("has_battery"):
-        entities.append(WyomingSatelliteBatteryLevelSensor(item.device))
-        entities.append(WyomingSatelliteBatteryChargingSensor(item.device))
+    if capabilities := item.device.capabilities:
+        if capabilities.get("app_version"):
+            entities.append(WyomingSatelliteAppVersionSensor(item.device))
+        if capabilities.get("has_battery"):
+            entities.append(WyomingSatelliteBatteryLevelSensor(item.device))
+            entities.append(WyomingSatelliteBatteryChargingSensor(item.device))
+        if item.device.has_light_sensor():
+            entities.append(WyomingSatelliteLightSensor(item.device))
 
     async_add_entities(entities)
 
@@ -165,6 +170,7 @@ class _WyomingSatelliteDeviceSensorBase(VASatelliteEntity, RestoreSensor):
     """Base class for device sensors."""
 
     _attr_native_value = 0
+    _listener_class = "status_update"
 
     async def async_added_to_hass(self) -> None:
         """Call when entity about to be added to hass."""
@@ -178,7 +184,7 @@ class _WyomingSatelliteDeviceSensorBase(VASatelliteEntity, RestoreSensor):
         self.async_on_remove(
             async_dispatcher_connect(
                 self.hass,
-                f"{DOMAIN}_{self._device.device_id}_status_update",
+                f"{DOMAIN}_{self._device.device_id}_{self._listener_class}",
                 self.status_update,
             )
         )
@@ -196,10 +202,17 @@ class _WyomingSatelliteDeviceSensorBase(VASatelliteEntity, RestoreSensor):
     @callback
     def status_update(self, data: dict[str, Any]) -> None:
         """Update entity."""
-        if sensors := data.get("sensors"):
-            if self.entity_description.key in sensors:
+        if self._listener_class == "status_update":
+            if sensors := data.get("sensors"):
+                if self.entity_description.key in sensors:
+                    self._attr_native_value = self._get_native_value(
+                        sensors[self.entity_description.key]
+                    )
+                    self.async_write_ha_state()
+        elif self._listener_class == "capabilities_update":
+            if self._device.capabilities.get(self.entity_description.key):
                 self._attr_native_value = self._get_native_value(
-                    sensors[self.entity_description.key]
+                    self._device.capabilities[self.entity_description.key]
                 )
                 self.async_write_ha_state()
 
@@ -248,3 +261,43 @@ class WyomingSatelliteBatteryChargingSensor(_WyomingSatelliteDeviceSensorBase):
     def _get_native_value(self, value: Any) -> Any:
         """Get the native value from the data."""
         return "not_charging" if int(value) == 0 else "charging"
+
+
+class WyomingSatelliteAppVersionSensor(_WyomingSatelliteDeviceSensorBase):
+    """Entity to represent app version sensor for satellite."""
+
+    _listener_class = "capabilities_update"
+    _attr_native_value = UNKNOWN
+    entity_description = SensorEntityDescription(
+        key="app_version",
+        translation_key="app_version",
+        icon="mdi:application",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        name="App version",
+    )
+
+    def _get_native_value(self, value: Any) -> Any:
+        """Get the native value from the data."""
+        return value if value is not None else UNKNOWN
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return entity attributes."""
+        return {
+            "device_signature": self.get_capability("device_signature"),
+            "android_version": self.get_capability("release"),
+            "has_battery": self.get_capability("has_battery"),
+            "has_front_camera": self.get_capability("has_front_camera"),
+            "has_light_sensor": self._device.has_light_sensor(),
+            "sensors": self.get_sensor_names(),
+        }
+
+    def get_capability(self, capability: str) -> Any:
+        """Get a specific capability from the device."""
+        return self._device.capabilities.get(capability, UNKNOWN)
+
+    def get_sensor_names(self) -> list[str]:
+        """Get the names of all sensors."""
+        if sensors := self._device.capabilities.get("sensors"):
+            return [json.loads(sensor).get("name") for sensor in sensors]
+        return None
