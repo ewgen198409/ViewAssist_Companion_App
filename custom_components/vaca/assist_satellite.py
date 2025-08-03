@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import io
-import json
 import logging
 import time
 from typing import Final
@@ -33,13 +32,13 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .client import VAAsyncTcpClient
-from .const import DOMAIN, INTENT_EVENT, SAMPLE_CHANNELS, SAMPLE_WIDTH
+from .const import DOMAIN, SAMPLE_CHANNELS, SAMPLE_WIDTH
 from .custom import (
+    CAPABILITIES_EVENT_TYPE,
     CustomAction,
-    CustomCapabilities,
+    CustomEvent,
     CustomSettings,
     CustomStatus,
-    CustomEvent,
 )
 from .devices import VASatelliteDevice
 from .entity import VASatelliteEntity
@@ -155,12 +154,12 @@ class ViewAssistSatelliteEntity(WyomingAssistSatellite, VASatelliteEntity):
             # Custom event
             evt = CustomEvent.from_event(event)
 
-            if evt.event == "capabilities":
-                self.device.capabilities = evt.data
+            if evt.event_type == CAPABILITIES_EVENT_TYPE:
+                self.device.capabilities = evt.event_data
                 async_dispatcher_send(
                     self.hass,
-                    f"{DOMAIN}_{self.device.device_id}_capabilities_update",
-                    evt.data,
+                    f"{DOMAIN}_{self.device.device_id}_{evt.event_type}_update",
+                    evt.event_data,
                 )
 
         return None

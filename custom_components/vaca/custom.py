@@ -14,6 +14,11 @@ _CUSTOM_ACTION_TYPE = "custom-action"
 _CUSTOM_EVENT_TYPE = "custom-event"
 
 
+ACTION_EVENT_TYPE = "action"
+CAPABILITIES_EVENT_TYPE = "capabilities"
+SETTINGS_EVENT_TYPE = "settings"
+
+
 @dataclass
 class CustomEvent(Eventable):
     """Custom event class."""
