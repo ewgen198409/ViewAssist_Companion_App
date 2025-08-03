@@ -11,6 +11,37 @@ _LOGGER = logging.getLogger(__name__)
 
 _CUSTOM_SETTINGS_TYPE = "custom-settings"
 _CUSTOM_ACTION_TYPE = "custom-action"
+_CUSTOM_EVENT_TYPE = "custom-event"
+
+
+@dataclass
+class CustomEvent(Eventable):
+    """Custom event class."""
+
+    event_type: str
+    """Type of the event."""
+
+    event_data: dict[str, Any] | None = None
+    """Data associated with the event."""
+
+    @staticmethod
+    def is_type(event_type: str) -> bool:
+        """Check if the event type matches."""
+        return event_type == _CUSTOM_EVENT_TYPE
+
+    def event(self) -> Event:
+        """Create an event for the custom event."""
+        return Event(
+            type=_CUSTOM_EVENT_TYPE,
+            data={"event_type": self.event_type, "data": self.event_data},
+        )
+
+    @staticmethod
+    def from_event(event: Event) -> "CustomEvent":
+        """Create a CustomEvent instance from an event."""
+        return CustomEvent(
+            event_type=event.data.get("event"), event_data=event.data.get("data")
+        )
 
 
 @dataclass

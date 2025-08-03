@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 
 from homeassistant.components.wyoming import (
@@ -20,7 +21,7 @@ from homeassistant.helpers.typing import ConfigType
 
 from .client import VAAsyncTcpClient
 from .const import ATTR_SPEAKER, DOMAIN
-from .custom import CustomCapabilities
+from .custom import CustomCapabilities, CustomEvent
 from .devices import VASatelliteDevice
 
 _LOGGER = logging.getLogger(__name__)
@@ -123,16 +124,19 @@ async def get_device_capabilities(item: DomainDataItem):
                 asyncio.timeout(1),
             ):
                 # Describe -> Info
-                await client.write_event(CustomCapabilities().event())
+                await client.write_event(CustomEvent("capabilities").event())
                 while True:
                     event = await client.read_event()
+                    _LOGGER.info("Received event: %s", event)
                     if event is None:
                         raise WyomingError(  # noqa: TRY301
                             "Connection closed unexpectedly",
                         )
 
-                    if CustomCapabilities.is_type(event.type):
-                        capabilities = CustomCapabilities.from_event(event)
+                    if CustomEvent.is_type(event.type):
+                        capabilities = CustomEvent.from_event(event).event_data.get(
+                            "capabilities"
+                        )
                         break  # while
 
                 if capabilities is not None:
@@ -141,4 +145,4 @@ async def get_device_capabilities(item: DomainDataItem):
             # Sleep and try again
             await asyncio.sleep(2)
 
-    return capabilities.capabilities
+    return capabilities

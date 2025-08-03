@@ -4,14 +4,15 @@ from __future__ import annotations
 
 import asyncio
 import io
+import json
 import logging
 import time
 from typing import Final
 import wave
-import json
 
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
 from wyoming.event import Event
+from wyoming.info import Describe
 from wyoming.pipeline import PipelineStage, RunPipeline
 from wyoming.satellite import RunSatellite
 
@@ -26,7 +27,6 @@ from homeassistant.components.wyoming import DomainDataItem, WyomingService
 
 # pylint: disable-next=hass-component-root-import
 from homeassistant.components.wyoming.assist_satellite import WyomingAssistSatellite
-from homeassistant.components.wyoming.data import Info
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_send
@@ -34,7 +34,13 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .client import VAAsyncTcpClient
 from .const import DOMAIN, INTENT_EVENT, SAMPLE_CHANNELS, SAMPLE_WIDTH
-from .custom import CustomAction, CustomSettings, CustomStatus
+from .custom import (
+    CustomAction,
+    CustomCapabilities,
+    CustomSettings,
+    CustomStatus,
+    CustomEvent,
+)
 from .devices import VASatelliteDevice
 from .entity import VASatelliteEntity
 
@@ -113,6 +119,7 @@ class ViewAssistSatelliteEntity(WyomingAssistSatellite, VASatelliteEntity):
 
     async def on_before_send_event_callback(self, event: Event) -> None:
         """Allow injection of events before event sent."""
+
         if RunSatellite().is_type(event.type):
             # Update url and port
             self.device.custom_settings["ha_port"] = self.hass.config.api.port
@@ -126,12 +133,13 @@ class ViewAssistSatelliteEntity(WyomingAssistSatellite, VASatelliteEntity):
 
     async def on_after_send_event_callback(self, event: Event) -> None:
         """Allow injection of events after event sent."""
+        if Describe().is_type(event.type):
+            await self._client.write_event(CustomEvent("capabilities", None).event())
 
     async def on_receive_event_callback(self, event: Event) -> Event | None:
         """Handle received custom events."""
 
         if event and CustomStatus.is_type(event.type):
-            # Custom status event
             status = CustomStatus.from_event(event)
             _LOGGER.debug(
                 "Received status event: %s",
@@ -142,6 +150,19 @@ class ViewAssistSatelliteEntity(WyomingAssistSatellite, VASatelliteEntity):
                 f"{DOMAIN}_{self.device.device_id}_status_update",
                 status.data,
             )
+
+        elif event and CustomEvent.is_type(event.type):
+            # Custom event
+            evt = CustomEvent.from_event(event)
+
+            if evt.event == "capabilities":
+                self.device.capabilities = evt.data
+                async_dispatcher_send(
+                    self.hass,
+                    f"{DOMAIN}_{self.device.device_id}_capabilities_update",
+                    evt.data,
+                )
+
         return None
 
     async def _connect(self) -> None:
