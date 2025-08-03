@@ -19,7 +19,7 @@ from homeassistant.helpers.typing import ConfigType
 
 from .client import VAAsyncTcpClient
 from .const import ATTR_SPEAKER, DOMAIN
-from .custom import CustomCapabilities, CustomEvent
+from .custom import CustomEvent
 from .devices import VASatelliteDevice
 
 _LOGGER = logging.getLogger(__name__)
@@ -117,7 +117,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def get_device_capabilities(item: DomainDataItem):
     """Get device capabilities."""
-    capabilities: CustomCapabilities | None = None
+    capabilities: CustomEvent | None = None
 
     for _ in range(4):
         try:
