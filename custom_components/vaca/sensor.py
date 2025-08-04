@@ -49,7 +49,6 @@ async def async_setup_entry(
             entities.append(WyomingSatelliteAppVersionSensor(item.device))
         if capabilities.get("has_battery"):
             entities.append(WyomingSatelliteBatteryLevelSensor(item.device))
-            entities.append(WyomingSatelliteBatteryChargingSensor(item.device))
         if item.device.has_light_sensor():
             entities.append(WyomingSatelliteLightSensor(item.device))
 
@@ -246,21 +245,6 @@ class WyomingSatelliteBatteryLevelSensor(_WyomingSatelliteDeviceSensorBase):
         device_class=SensorDeviceClass.BATTERY,
         native_unit_of_measurement=PERCENTAGE,
     )
-
-
-class WyomingSatelliteBatteryChargingSensor(_WyomingSatelliteDeviceSensorBase):
-    """Entity to represent battery charging sensor for satellite."""
-
-    _attr_native_value = UNKNOWN
-    entity_description = SensorEntityDescription(
-        key="battery_charging",
-        translation_key="battery_charging",
-        icon="mdi:battery-charging",
-    )
-
-    def _get_native_value(self, value: Any) -> Any:
-        """Get the native value from the data."""
-        return "not_charging" if int(value) == 0 else "charging"
 
 
 class WyomingSatelliteAppVersionSensor(_WyomingSatelliteDeviceSensorBase):

@@ -28,6 +28,7 @@ CONFIG_SCHEMA = cv.empty_config_schema(DOMAIN)
 
 SATELLITE_PLATFORMS = [
     Platform.ASSIST_SATELLITE,
+    Platform.BINARY_SENSOR,
     Platform.BUTTON,
     Platform.SELECT,
     Platform.SWITCH,

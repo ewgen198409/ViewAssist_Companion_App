@@ -26,8 +26,8 @@
     },
     "entity": {
         "binary_sensor": {
-            "assist_in_progress": {
-                "name": "Assist in progress"
+            "battery_charging": {
+                "name": "Battery charging"
             }
         },
         "button": {
@@ -125,13 +125,6 @@
             },
             "battery_level": {
                 "name": "Battery"
-            },
-            "battery_charging": {
-                "name": "Battery charging",
-                "state": {
-                    "charging": "Charging",
-                    "not_charging": "Not charging"
-                }
             }
         },
         "switch": {
