@@ -125,6 +125,9 @@
             },
             "battery_level": {
                 "name": "Battery"
+            },
+            "app_version": {
+                "name": "App version"
             }
         },
         "switch": {
