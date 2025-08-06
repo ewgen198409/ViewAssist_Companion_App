@@ -37,6 +37,7 @@ from .custom import (
     ACTION_EVENT_TYPE,
     CAPABILITIES_EVENT_TYPE,
     SETTINGS_EVENT_TYPE,
+    STATUS_EVENT_TYPE,
     CustomEvent,
 )
 from .devices import VASatelliteDevice
@@ -130,18 +131,20 @@ class ViewAssistSatelliteEntity(WyomingAssistSatellite, VASatelliteEntity):
     async def on_after_send_event_callback(self, event: Event) -> None:
         """Allow injection of events after event sent."""
         if Describe().is_type(event.type):
-            await self._client.write_event(CustomEvent("capabilities", None).event())
+            await self._client.write_event(CustomEvent("capabilities").event())
 
-    async def on_receive_event_callback(self, event: Event) -> Event | None:
+    async def on_receive_event_callback(
+        self, event: Event
+    ) -> tuple[bool, Event | None]:
         """Handle received custom events."""
         if event and CustomEvent.is_type(event.type):
             # Custom event
             evt = CustomEvent.from_event(event)
 
             if evt.event_type == CAPABILITIES_EVENT_TYPE:
-                self.device.capabilities = evt.event_data
+                self.device.capabilities = evt.event_data.get("capabilities", {})
 
-            elif evt.event_type == SETTINGS_EVENT_TYPE:
+            elif evt.event_type == STATUS_EVENT_TYPE:
                 _LOGGER.debug(
                     "Received status event: %s",
                     evt.event_data,
@@ -152,8 +155,9 @@ class ViewAssistSatelliteEntity(WyomingAssistSatellite, VASatelliteEntity):
                 f"{DOMAIN}_{self.device.device_id}_{evt.event_type}_update",
                 evt.event_data,
             )
+            return False, None
 
-        return None
+        return True, event
 
     async def _connect(self) -> None:
         """Connect to satellite over TCP.  Uses custom TCP client to allow callbacks on send."""
