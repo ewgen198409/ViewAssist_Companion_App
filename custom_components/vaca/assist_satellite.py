@@ -95,7 +95,7 @@ class ViewAssistSatelliteEntity(WyomingAssistSatellite, VASatelliteEntity):
         config_entry: ConfigEntry,
     ) -> None:
         """Initialize a View Assist satellite."""
-        super().__init__(hass, service, device, config_entry)
+        WyomingAssistSatellite.__init__(self, hass, service, device, config_entry)
         VASatelliteEntity.__init__(self, device)
         self._client: VAAsyncTcpClient | None = None
         self.device: VASatelliteDevice = device
