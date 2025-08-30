@@ -39,6 +39,7 @@ from .custom import (
     SETTINGS_EVENT_TYPE,
     STATUS_EVENT_TYPE,
     CustomEvent,
+    PipelineEnded,
     getIntegrationVersion,
 )
 from .devices import VASatelliteDevice
@@ -196,6 +197,13 @@ class ViewAssistSatelliteEntity(WyomingAssistSatellite, VASatelliteEntity):
             # Fix for error when running pipeline for ask question
             if not event.data.get("tts_output"):
                 event.data["tts_output"] = {"token": ""}
+        elif event.type == assist_pipeline.PipelineEventType.RUN_END:
+            # Pipeline ended
+            self.config_entry.async_create_background_task(
+                self.hass,
+                self._client.write_event(PipelineEnded().event()),
+                "send pipeline ended event",
+            )
         elif event.type == assist_pipeline.PipelineEventType.STT_END:
             # Speech-to-text transcript
             if event.data:

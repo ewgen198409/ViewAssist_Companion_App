@@ -14,6 +14,7 @@ from .const import DOMAIN
 _LOGGER = logging.getLogger(__name__)
 
 _CUSTOM_EVENT_TYPE = "custom-event"
+_PIPELINE_ENDED_EVENT_TYPE = "pipeline-ended"
 
 ACTION_EVENT_TYPE = "action"
 CAPABILITIES_EVENT_TYPE = "capabilities"
@@ -32,6 +33,22 @@ class CustomActions(StrEnum):
     REFRESH = "refresh"
     TOAST_MESSAGE = "toast-message"
     WAKE = "wake"
+
+
+@dataclass
+class PipelineEnded(Eventable):
+    """Event triggered when a pipeline ends."""
+
+    @staticmethod
+    def is_type(event_type: str) -> bool:
+        return event_type == _PIPELINE_ENDED_EVENT_TYPE
+
+    def event(self) -> Event:
+        return Event(type=_PIPELINE_ENDED_EVENT_TYPE)
+
+    @staticmethod
+    def from_event(event: Event) -> "PipelineEnded":
+        return PipelineEnded()
 
 
 @dataclass
