@@ -14,6 +14,7 @@ It has been tested on the following devices:
 - Lenovo Smart Display 10"
 - Lenovo Smart Clock 2
 - Samsung S24
+- Samsung Tab 6
 
 If you are using a different device and have issues, please log an issue in the repository and we will do our best to solve it with you.
 
@@ -36,6 +37,7 @@ The integration and Android application together have the following features:
 - Sensors to show ambient light levels and device orientation (where available)
 - Start on boot
 - Securtity to prevent intrusion once paired to a HA server
+- In app updates - v0.4.0 onwards
 
 ## Installation
 
@@ -55,7 +57,7 @@ As is common with new custom integrations, it can take a little while to be full
 
 ### Android Application
 
-The app is not currently available in the Play store and will need to be downloaded from the release assets in this repository and installed on your device.  [Latest release](https://github.com/msp1974/ViewAssist_Companion_App/releases/latest)
+The app is not currently available in the Play store and will need to be downloaded from the release assets in this repository and installed on your device. [Latest release](https://github.com/msp1974/ViewAssist_Companion_App/releases/latest)
 
 # Diagnostics Overlay (v0.3.4 and above)
 
@@ -84,6 +86,14 @@ A setting of 6 on the threshold setting should be a good place to start to find 
 Some wake words are better at detecting/less sensitive to accents than others and you may need to adjust this threshold setting if you change the wake word you wish to use, and this diagnostic overlay should help you get that setting right for you.
 
 # FAQs
+
+### My device won't load the HA webpage / I get page not found error with the wrong address
+
+In most cases, this will be in cases where your HA is setup with SSL or behind a proxy and you have not setup the local network url in HA to reflect the correct address. VACA uses this information if it is populated and (if not) uses the IP of the server that connected ot the device and its configured port (default: 8123). Please ensure the internal url is correctly set in Settings -> System -> Network of you HA instance.
+
+An additional issue could be that you are using self signed certificates in your SSL config. You need at least v0.4.0 to be able to use self signed certificates and select accept/always accept on the warning message that appears when connecting.
+
+---
 
 ### My device doesn't pick up the wake word or picks up too many false positives
 
