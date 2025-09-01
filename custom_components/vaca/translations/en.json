@@ -156,6 +156,9 @@
             },
             "diagnostics_enabled": {
                 "name": "On screen diagnostics"
+            },
+            "continue_conversation": {
+                "name": "Continue conversation"
             }
         }
     }
