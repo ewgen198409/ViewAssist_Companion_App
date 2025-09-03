@@ -35,6 +35,7 @@ async def async_setup_entry(
         WyomingSatelliteScreenAlwaysOnSwitch(item.device),
         WyomingSatelliteDarkModeSwitch(item.device),
         WyomingSatelliteDiagnosticsSwitch(item.device),
+        WyomingSatelliteContinueConversationSwitch(item.device),
     ]
 
     if capabilities := item.device.capabilities:
@@ -45,12 +46,11 @@ async def async_setup_entry(
         async_add_entities(entities)
 
 
-class WyomingSatelliteMuteSwitch(
-    VASatelliteEntity, restore_state.RestoreEntity, SwitchEntity
-):
-    """Entity to represent if satellite is muted."""
+class BaseSwitch(VASatelliteEntity, restore_state.RestoreEntity, SwitchEntity):
+    """Base class for all switch entities."""
 
-    entity_description = SwitchEntityDescription(key="mute", translation_key="mute")
+    entity_description: SwitchEntityDescription
+    default_on = False
 
     async def async_added_to_hass(self) -> None:
         """Call when entity about to be added to hass."""
@@ -58,14 +58,13 @@ class WyomingSatelliteMuteSwitch(
 
         state = await self.async_get_last_state()
 
-        # Default to off
-        self._attr_is_on = (state is not None) and (state.state == STATE_ON)
-        await self.do_switch(self._attr_is_on)
+        # Set restore state or default
+        if self.default_on:
+            self._attr_is_on = (state is None) or (state.state == STATE_ON)
+        else:
+            self._attr_is_on = (state is not None) and (state.state == STATE_ON)
 
-    @property
-    def icon(self) -> str:
-        """Return the icon to use in the frontend."""
-        return "mdi:microphone-off" if self._attr_is_on else "mdi:microphone"
+        await self.do_switch(self._attr_is_on)
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn on."""
@@ -82,9 +81,19 @@ class WyomingSatelliteMuteSwitch(
         self._device.set_custom_setting(self.entity_description.key, self._attr_is_on)
 
 
-class WyomingSatelliteSwipeToRefreshSwitch(
-    VASatelliteEntity, restore_state.RestoreEntity, SwitchEntity
-):
+class WyomingSatelliteMuteSwitch(BaseSwitch):
+    """Entity to represent if satellite is muted."""
+
+    entity_description = SwitchEntityDescription(key="mute", translation_key="mute")
+    default_on = False
+
+    @property
+    def icon(self) -> str:
+        """Return the icon to use in the frontend."""
+        return "mdi:microphone-off" if self._attr_is_on else "mdi:microphone"
+
+
+class WyomingSatelliteSwipeToRefreshSwitch(BaseSwitch):
     """Entity to control swipe to refresh."""
 
     entity_description = SwitchEntityDescription(
@@ -93,35 +102,10 @@ class WyomingSatelliteSwipeToRefreshSwitch(
         icon="mdi:web-refresh",
         entity_category=EntityCategory.CONFIG,
     )
-
-    async def async_added_to_hass(self) -> None:
-        """Call when entity about to be added to hass."""
-        await super().async_added_to_hass()
-
-        state = await self.async_get_last_state()
-
-        # Default to on
-        self._attr_is_on = (state is None) or (state.state == STATE_ON)
-        await self.do_switch(self._attr_is_on)
-
-    async def async_turn_on(self, **kwargs: Any) -> None:
-        """Turn on."""
-        await self.do_switch(True)
-
-    async def async_turn_off(self, **kwargs: Any) -> None:
-        """Turn off."""
-        await self.do_switch(False)
-
-    async def do_switch(self, value: bool) -> None:
-        """Perform the switch action."""
-        self._attr_is_on = value
-        self.async_write_ha_state()
-        self._device.set_custom_setting(self.entity_description.key, self._attr_is_on)
+    default_on = True
 
 
-class WyomingSatelliteScreenAutoBrightnessSwitch(
-    VASatelliteEntity, restore_state.RestoreEntity, SwitchEntity
-):
+class WyomingSatelliteScreenAutoBrightnessSwitch(BaseSwitch):
     """Entity to control swipe to refresh."""
 
     entity_description = SwitchEntityDescription(
@@ -130,35 +114,10 @@ class WyomingSatelliteScreenAutoBrightnessSwitch(
         icon="mdi:monitor-screenshot",
         entity_category=EntityCategory.CONFIG,
     )
-
-    async def async_added_to_hass(self) -> None:
-        """Call when entity about to be added to hass."""
-        await super().async_added_to_hass()
-
-        state = await self.async_get_last_state()
-
-        # Default to off
-        self._attr_is_on = (state is not None) and (state.state == STATE_ON)
-        await self.do_switch(self._attr_is_on)
-
-    async def async_turn_on(self, **kwargs: Any) -> None:
-        """Turn on."""
-        await self.do_switch(True)
-
-    async def async_turn_off(self, **kwargs: Any) -> None:
-        """Turn off."""
-        await self.do_switch(False)
-
-    async def do_switch(self, value: bool) -> None:
-        """Perform the switch action."""
-        self._attr_is_on = value
-        self.async_write_ha_state()
-        self._device.set_custom_setting(self.entity_description.key, self._attr_is_on)
+    default_on = False
 
 
-class WyomingSatelliteScreenAlwaysOnSwitch(
-    VASatelliteEntity, restore_state.RestoreEntity, SwitchEntity
-):
+class WyomingSatelliteScreenAlwaysOnSwitch(BaseSwitch):
     """Entity to control screen always on."""
 
     entity_description = SwitchEntityDescription(
@@ -167,35 +126,10 @@ class WyomingSatelliteScreenAlwaysOnSwitch(
         icon="mdi:monitor-screenshot",
         entity_category=EntityCategory.CONFIG,
     )
-
-    async def async_added_to_hass(self) -> None:
-        """Call when entity about to be added to hass."""
-        await super().async_added_to_hass()
-
-        state = await self.async_get_last_state()
-
-        # Default to on
-        self._attr_is_on = (state is None) or (state.state == STATE_ON)
-        await self.do_switch(self._attr_is_on)
-
-    async def async_turn_on(self, **kwargs: Any) -> None:
-        """Turn on."""
-        await self.do_switch(True)
-
-    async def async_turn_off(self, **kwargs: Any) -> None:
-        """Turn off."""
-        await self.do_switch(False)
-
-    async def do_switch(self, value: bool) -> None:
-        """Perform the switch action."""
-        self._attr_is_on = value
-        self.async_write_ha_state()
-        self._device.set_custom_setting(self.entity_description.key, self._attr_is_on)
+    default_on = True
 
 
-class WyomingSatelliteDarkModeSwitch(
-    VASatelliteEntity, restore_state.RestoreEntity, SwitchEntity
-):
+class WyomingSatelliteDarkModeSwitch(BaseSwitch):
     """Entity to control screen always on."""
 
     entity_description = SwitchEntityDescription(
@@ -204,35 +138,10 @@ class WyomingSatelliteDarkModeSwitch(
         icon="mdi:compare",
         entity_category=EntityCategory.CONFIG,
     )
-
-    async def async_added_to_hass(self) -> None:
-        """Call when entity about to be added to hass."""
-        await super().async_added_to_hass()
-
-        state = await self.async_get_last_state()
-
-        # Default to on
-        self._attr_is_on = (state is not None) and (state.state == STATE_ON)
-        await self.do_switch(self._attr_is_on)
-
-    async def async_turn_on(self, **kwargs: Any) -> None:
-        """Turn on."""
-        await self.do_switch(True)
-
-    async def async_turn_off(self, **kwargs: Any) -> None:
-        """Turn off."""
-        await self.do_switch(False)
-
-    async def do_switch(self, value: bool) -> None:
-        """Perform the switch action."""
-        self._attr_is_on = value
-        self.async_write_ha_state()
-        self._device.set_custom_setting(self.entity_description.key, self._attr_is_on)
+    default_on = True
 
 
-class WyomingSatelliteDNDSwitch(
-    VASatelliteEntity, restore_state.RestoreEntity, SwitchEntity
-):
+class WyomingSatelliteDNDSwitch(BaseSwitch):
     """Entity to control screen always on."""
 
     entity_description = SwitchEntityDescription(
@@ -240,35 +149,10 @@ class WyomingSatelliteDNDSwitch(
         translation_key="do_not_disturb",
         icon="mdi:do-not-disturb",
     )
-
-    async def async_added_to_hass(self) -> None:
-        """Call when entity about to be added to hass."""
-        await super().async_added_to_hass()
-
-        state = await self.async_get_last_state()
-
-        # Default to on
-        self._attr_is_on = (state is not None) and (state.state == STATE_ON)
-        await self.do_switch(self._attr_is_on)
-
-    async def async_turn_on(self, **kwargs: Any) -> None:
-        """Turn on."""
-        await self.do_switch(True)
-
-    async def async_turn_off(self, **kwargs: Any) -> None:
-        """Turn off."""
-        await self.do_switch(False)
-
-    async def do_switch(self, value: bool) -> None:
-        """Perform the switch action."""
-        self._attr_is_on = value
-        self.async_write_ha_state()
-        self._device.set_custom_setting(self.entity_description.key, self._attr_is_on)
+    default_on = True
 
 
-class WyomingSatelliteDiagnosticsSwitch(
-    VASatelliteEntity, restore_state.RestoreEntity, SwitchEntity
-):
+class WyomingSatelliteDiagnosticsSwitch(BaseSwitch):
     """Entity to control diagnostics overlay on/off."""
 
     entity_description = SwitchEntityDescription(
@@ -277,27 +161,16 @@ class WyomingSatelliteDiagnosticsSwitch(
         icon="mdi:microphone-question",
         entity_category=EntityCategory.DIAGNOSTIC,
     )
+    default_on = True
 
-    async def async_added_to_hass(self) -> None:
-        """Call when entity about to be added to hass."""
-        await super().async_added_to_hass()
 
-        state = await self.async_get_last_state()
+class WyomingSatelliteContinueConversationSwitch(BaseSwitch):
+    """Entity to control continue conversation on/off."""
 
-        # Default to on
-        self._attr_is_on = (state is not None) and (state.state == STATE_ON)
-        await self.do_switch(self._attr_is_on)
-
-    async def async_turn_on(self, **kwargs: Any) -> None:
-        """Turn on."""
-        await self.do_switch(True)
-
-    async def async_turn_off(self, **kwargs: Any) -> None:
-        """Turn off."""
-        await self.do_switch(False)
-
-    async def do_switch(self, value: bool) -> None:
-        """Perform the switch action."""
-        self._attr_is_on = value
-        self.async_write_ha_state()
-        self._device.set_custom_setting(self.entity_description.key, self._attr_is_on)
+    entity_description = SwitchEntityDescription(
+        key="continue_conversation",
+        translation_key="continue_conversation",
+        icon="mdi:message-bulleted",
+        entity_category=EntityCategory.CONFIG,
+    )
+    default_on = True

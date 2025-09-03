@@ -137,14 +137,13 @@ class WyomingSatelliteWakeWordSelect(
     def get_wake_word_options(self) -> list[str]:
         """Return the list of available wake word options."""
         wake_options: list[dict[str, str]] = []
-        if self._device.info:
-            if self._device.info.wake:
-                for wake_program in self._device.info.wake:
-                    if wake_program.name == "available_wake_words":
-                        wake_options = [
-                            model.name.replace("_", " ").title()
-                            for model in wake_program.models
-                        ]
+        if self._device.info and self._device.info.wake:
+            for wake_program in self._device.info.wake:
+                if wake_program.name == "available_wake_words":
+                    wake_options = [
+                        model.name.replace("_", " ").title()
+                        for model in wake_program.models
+                    ]
         return wake_options
 
     async def async_added_to_hass(self) -> None:
@@ -154,6 +153,9 @@ class WyomingSatelliteWakeWordSelect(
         state = await self.async_get_last_state()
         if state is not None and state.state in self.options:
             await self.async_select_option(state.state)
+        # Default to the first available option if no state is found
+        elif self.options:
+            await self.async_select_option(self.options[0])
 
     async def async_select_option(self, option: str) -> None:
         """Select an option."""

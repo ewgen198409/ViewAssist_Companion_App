@@ -32,13 +32,15 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .client import VAAsyncTcpClient
-from .const import DOMAIN, SAMPLE_CHANNELS, SAMPLE_WIDTH
+from .const import DOMAIN, MIN_APK_VERSION, SAMPLE_CHANNELS, SAMPLE_WIDTH
 from .custom import (
     ACTION_EVENT_TYPE,
     CAPABILITIES_EVENT_TYPE,
     SETTINGS_EVENT_TYPE,
     STATUS_EVENT_TYPE,
     CustomEvent,
+    PipelineEnded,
+    getIntegrationVersion,
 )
 from .devices import VASatelliteDevice
 from .entity import VASatelliteEntity
@@ -95,7 +97,7 @@ class ViewAssistSatelliteEntity(WyomingAssistSatellite, VASatelliteEntity):
         config_entry: ConfigEntry,
     ) -> None:
         """Initialize a View Assist satellite."""
-        super().__init__(hass, service, device, config_entry)
+        WyomingAssistSatellite.__init__(self, hass, service, device, config_entry)
         VASatelliteEntity.__init__(self, device)
         self._client: VAAsyncTcpClient | None = None
         self.device: VASatelliteDevice = device
@@ -120,6 +122,11 @@ class ViewAssistSatelliteEntity(WyomingAssistSatellite, VASatelliteEntity):
         """Allow injection of events before event sent."""
 
         if RunSatellite().is_type(event.type):
+            # integration version
+            self.device.custom_settings[
+                "integration_version"
+            ] = await getIntegrationVersion(self.hass)
+            self.device.custom_settings["min_required_apk_version"] = MIN_APK_VERSION
             # Update url and port
             self.device.custom_settings["ha_port"] = self.hass.config.api.port
             self.device.custom_settings["ha_url"] = (
@@ -190,6 +197,13 @@ class ViewAssistSatelliteEntity(WyomingAssistSatellite, VASatelliteEntity):
             # Fix for error when running pipeline for ask question
             if not event.data.get("tts_output"):
                 event.data["tts_output"] = {"token": ""}
+        elif event.type == assist_pipeline.PipelineEventType.RUN_END:
+            # Pipeline ended
+            self.config_entry.async_create_background_task(
+                self.hass,
+                self._client.write_event(PipelineEnded().event()),
+                "send pipeline ended event",
+            )
         elif event.type == assist_pipeline.PipelineEventType.STT_END:
             # Speech-to-text transcript
             if event.data:
@@ -423,8 +437,32 @@ class ViewAssistSatelliteEntity(WyomingAssistSatellite, VASatelliteEntity):
         finally:
             send_duration = time.monotonic() - start_time
             timeout_seconds = max(0, total_seconds - send_duration + _TTS_TIMEOUT_EXTRA)
+
+            if self._played_event_received is None:
+                self._played_event_received = asyncio.Event()
+            self._played_event_received.clear()
+
             self.config_entry.async_create_background_task(
                 self.hass,
                 self._tts_timeout(timeout_seconds, self._run_loop_id),
                 name="wyoming TTS timeout",
             )
+
+    async def _tts_timeout(
+        self, timeout_seconds: float, run_loop_id: str | None
+    ) -> None:
+        """Force state change to IDLE in case TTS played event isn't received."""
+        await asyncio.sleep(timeout_seconds + _TTS_TIMEOUT_EXTRA)
+
+        if (
+            self._played_event_received is not None
+            and self._played_event_received.is_set()
+        ):
+            # Played event already received
+            return
+
+        if run_loop_id != self._run_loop_id:
+            # On a different pipeline run now
+            return
+
+        self.tts_response_finished()

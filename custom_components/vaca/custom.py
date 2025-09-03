@@ -7,9 +7,14 @@ from typing import Any
 
 from wyoming.event import Event, Eventable
 
+from homeassistant.core import HomeAssistant
+from homeassistant.loader import async_get_integration
+from .const import DOMAIN
+
 _LOGGER = logging.getLogger(__name__)
 
 _CUSTOM_EVENT_TYPE = "custom-event"
+_PIPELINE_ENDED_EVENT_TYPE = "pipeline-ended"
 
 ACTION_EVENT_TYPE = "action"
 CAPABILITIES_EVENT_TYPE = "capabilities"
@@ -28,6 +33,22 @@ class CustomActions(StrEnum):
     REFRESH = "refresh"
     TOAST_MESSAGE = "toast-message"
     WAKE = "wake"
+
+
+@dataclass
+class PipelineEnded(Eventable):
+    """Event triggered when a pipeline ends."""
+
+    @staticmethod
+    def is_type(event_type: str) -> bool:
+        return event_type == _PIPELINE_ENDED_EVENT_TYPE
+
+    def event(self) -> Event:
+        return Event(type=_PIPELINE_ENDED_EVENT_TYPE)
+
+    @staticmethod
+    def from_event(event: Event) -> "PipelineEnded":
+        return PipelineEnded()
 
 
 @dataclass
@@ -61,3 +82,9 @@ class CustomEvent(Eventable):
         return CustomEvent(
             event_type=event.data.get("event_type"), event_data=event.data.get("data")
         )
+
+
+async def getIntegrationVersion(hass: HomeAssistant) -> str:
+    """Get the integration version."""
+    integration = await async_get_integration(hass, DOMAIN)
+    return integration.version if integration else "0.0.0"

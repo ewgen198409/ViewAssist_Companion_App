@@ -4,13 +4,15 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-import json
 from typing import Any
 
 from wyoming.info import Info
 
 from homeassistant.components.wyoming import SatelliteDevice
-from homeassistant.core import callback
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import entity_registry as er
+
+from .const import DOMAIN
 
 
 @dataclass
@@ -25,6 +27,27 @@ class VASatelliteDevice(SatelliteDevice):
     _custom_action_listener: Callable[[], None] | None = None
     stt_listener: Callable[[str], None] | None = None
     tts_listener: Callable[[str], None] | None = None
+
+    def get_pipeline_entity_id(self, hass: HomeAssistant) -> str | None:
+        """Return entity id for pipeline select."""
+        ent_reg = er.async_get(hass)
+        return ent_reg.async_get_entity_id(
+            "select", DOMAIN, f"{self.satellite_id}-pipeline"
+        )
+
+    def get_noise_suppression_level_entity_id(self, hass: HomeAssistant) -> str | None:
+        """Return entity id for noise suppression select."""
+        ent_reg = er.async_get(hass)
+        return ent_reg.async_get_entity_id(
+            "select", DOMAIN, f"{self.satellite_id}-noise_suppression_level"
+        )
+
+    def get_vad_sensitivity_entity_id(self, hass: HomeAssistant) -> str | None:
+        """Return entity id for VAD sensitivity."""
+        ent_reg = er.async_get(hass)
+        return ent_reg.async_get_entity_id(
+            "select", DOMAIN, f"{self.satellite_id}-vad_sensitivity"
+        )
 
     @callback
     def set_custom_setting(self, setting: str, value: str | float) -> None:

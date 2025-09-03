@@ -39,11 +39,13 @@
             }
         },
         "media_player": {
-            "name": "Media Player",
-            "state": {
-                "playing": "Playing",
-                "paused": "Paused",
-                "idle": "Idle"
+            "media_player": {
+                "name": "Media Player",
+                "state": {
+                    "playing": "Playing",
+                    "paused": "Paused",
+                    "idle": "Idle"
+                }
             }
         },
         "number": {
@@ -154,6 +156,9 @@
             },
             "diagnostics_enabled": {
                 "name": "On screen diagnostics"
+            },
+            "continue_conversation": {
+                "name": "Continue conversation"
             }
         }
     }
