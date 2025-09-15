@@ -34,6 +34,9 @@
             "refresh": {
                 "name": "Refresh"
             },
+            "screen_wake": {
+                "name": "Wake screen"
+            },
             "wake": {
                 "name": "Wake"
             }
