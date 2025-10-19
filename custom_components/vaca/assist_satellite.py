@@ -27,7 +27,7 @@ from homeassistant.components.wyoming import DomainDataItem, WyomingService
 # pylint: disable-next=hass-component-root-import
 from homeassistant.components.wyoming.assist_satellite import WyomingAssistSatellite
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
@@ -41,6 +41,7 @@ from .custom import (
     CustomEvent,
     PipelineEnded,
     getIntegrationVersion,
+    getVADashboardPath,
 )
 from .devices import VASatelliteDevice
 from .entity import VASatelliteEntity
@@ -132,6 +133,8 @@ class ViewAssistSatelliteEntity(WyomingAssistSatellite, VASatelliteEntity):
             self.device.custom_settings["ha_url"] = (
                 self.hass.config.internal_url if self.hass.config.internal_url else ""
             )
+            home = getVADashboardPath(self.hass, self.device.satellite_id)
+            self.device.custom_settings["ha_dashboard"] = home.removeprefix("/")
             # Send config event
             self._custom_settings_changed()
 
@@ -140,9 +143,8 @@ class ViewAssistSatelliteEntity(WyomingAssistSatellite, VASatelliteEntity):
         if Describe().is_type(event.type):
             await self._client.write_event(CustomEvent("capabilities").event())
 
-    async def on_receive_event_callback(
-        self, event: Event
-    ) -> tuple[bool, Event | None]:
+    @callback
+    def on_receive_event_callback(self, event: Event) -> tuple[bool, Event | None]:
         """Handle received custom events."""
         if event and CustomEvent.is_type(event.type):
             # Custom event

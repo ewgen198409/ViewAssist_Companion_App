@@ -69,6 +69,9 @@
             },
             "wake_word_threshold": {
                 "name": "Wake word threshold"
+            },
+            "zoom_level": {
+                "name": "Zoom level"
             }
         },
         "select": {
@@ -162,6 +165,9 @@
             },
             "continue_conversation": {
                 "name": "Continue conversation"
+            },
+            "alarm": {
+                "name": "Alarm"
             }
         }
     }

@@ -35,9 +35,12 @@ class VAAsyncTcpClient(AsyncTcpClient):
         modified_event = None
         forward_event = False
         while not forward_event:
-            event = await super().read_event()
-            if self._on_receive_callback:
-                forward_event, modified_event = await self._on_receive_callback(event)
+            try:
+                event = await super().read_event()
+                if self._on_receive_callback:
+                    forward_event, modified_event = self._on_receive_callback(event)
+            except ConnectionResetError:
+                return None
         return modified_event if modified_event else event
 
     def can_write_event(self) -> bool:

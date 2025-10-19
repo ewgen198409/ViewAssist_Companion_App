@@ -8,6 +8,7 @@ from typing import Any
 from wyoming.event import Event, Eventable
 
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 from homeassistant.loader import async_get_integration
 from .const import DOMAIN
 
@@ -89,3 +90,33 @@ async def getIntegrationVersion(hass: HomeAssistant) -> str:
     """Get the integration version."""
     integration = await async_get_integration(hass, DOMAIN)
     return integration.version if integration else "0.0.0"
+
+
+def getVADashboardPath(hass: HomeAssistant, uuid: str) -> str:
+    """Get the dashboard path."""
+    # Look for VA and a config entry that uses this uuid for display.  Then get the dashboard path
+    # from it or the master entry.  If not set, return empty string
+    if entries := hass.config_entries.async_entries(
+        "view_assist", include_disabled=False
+    ):
+        entity_reg = er.async_get(hass)
+        for entry in entries:
+            try:
+                if entry.data["type"] == "vaca":
+                    if mic_device := entry.data.get("mic_device", {}):
+                        # Get device id for this entity
+                        if mic_device_entity := entity_reg.async_get(mic_device):
+                            entry_id = mic_device_entity.config_entry_id
+                            if entry_id == uuid:
+                                if home := entry.options.get("home"):
+                                    return home
+                                # Look for master entry
+                                for master_entry in entries:
+                                    if master_entry.data["type"] == "master_config":
+                                        if home := master_entry.options.get("home"):
+                                            return home
+                                return "view-assist"
+            except Exception as e:
+                _LOGGER.error("Error getting dashboard path: %s", e)
+                continue
+    return ""

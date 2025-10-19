@@ -40,6 +40,7 @@ async def async_setup_entry(
             WyomingSatelliteDuckingVolumeNumber(item.device),
             WyomingSatelliteScreenBrightnessNumber(item.device),
             WyomingSatelliteWakeWordThresholdNumber(item.device),
+            WyomingSatelliteZoomLevelNumber(item.device),
         ]
     )
 
@@ -229,3 +230,36 @@ class WyomingSatelliteWakeWordThresholdNumber(VASatelliteEntity, RestoreNumber):
         self._attr_native_value = value
         self.async_write_ha_state()
         self._device.set_custom_setting(self.entity_description.key, value)
+
+
+class WyomingSatelliteZoomLevelNumber(VASatelliteEntity, RestoreNumber):
+    """Entity to represent zoom level."""
+
+    entity_description = NumberEntityDescription(
+        key="zoom_level",
+        translation_key="zoom_level",
+        icon="mdi:magnify-plus",
+        entity_category=EntityCategory.CONFIG,
+    )
+    _attr_should_poll = False
+    _attr_native_min_value = 0
+    _attr_native_max_value = 2.5
+    _attr_native_step = 0.1
+    _attr_native_value = 0
+
+    async def async_added_to_hass(self) -> None:
+        """When entity is added to Home Assistant."""
+        await super().async_added_to_hass()
+
+        state = await self.async_get_last_state()
+        if state is not None:
+            await self.async_set_native_value(float(state.state))
+
+    async def async_set_native_value(self, value: float) -> None:
+        """Set new value."""
+        value = max(0, min(self._attr_native_max_value, value))
+        self._attr_native_value = value
+        self.async_write_ha_state()
+        self._device.set_custom_setting(
+            self.entity_description.key, int(value * 100) + 60 if value > 0 else 0
+        )

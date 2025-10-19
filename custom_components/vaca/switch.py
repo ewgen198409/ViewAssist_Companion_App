@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
@@ -16,6 +17,8 @@ from .entity import VASatelliteEntity
 
 if TYPE_CHECKING:
     from homeassistant.components.wyoming import DomainDataItem
+
+_LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
@@ -36,6 +39,7 @@ async def async_setup_entry(
         WyomingSatelliteDarkModeSwitch(item.device),
         WyomingSatelliteDiagnosticsSwitch(item.device),
         WyomingSatelliteContinueConversationSwitch(item.device),
+        WyomingSatelliteAlarmSwitch(item.device),
     ]
 
     if capabilities := item.device.capabilities:
@@ -174,3 +178,22 @@ class WyomingSatelliteContinueConversationSwitch(BaseSwitch):
         entity_category=EntityCategory.CONFIG,
     )
     default_on = True
+
+
+class WyomingSatelliteAlarmSwitch(BaseSwitch):
+    """Entity to control alarm on/off."""
+
+    entity_description = SwitchEntityDescription(
+        key="alarm",
+        translation_key="alarm",
+        icon="mdi:alarm-bell",
+    )
+    default_on = False
+
+    async def do_switch(self, value: bool) -> None:
+        """Perform the switch action."""
+        self._attr_is_on = value
+        self.async_write_ha_state()
+        self._device.send_custom_action(
+            self.entity_description.key, {"activate": self._attr_is_on}
+        )
