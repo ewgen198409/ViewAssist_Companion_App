@@ -32,6 +32,7 @@ async def async_setup_entry(
         [
             WyomingSatelliteWakeButton(item.device),
             WyomingSatelliteRefreshButton(item.device),
+            WyomingScreenSleepButton(item.device),
             WyomingScreenWakeButton(item.device),
         ]
     )
@@ -61,6 +62,19 @@ class WyomingSatelliteRefreshButton(VASatelliteEntity, ButtonEntity):
     async def async_press(self) -> None:
         """Press the button."""
         self._device.send_custom_action(CustomActions.REFRESH)
+
+
+class WyomingScreenSleepButton(VASatelliteEntity, ButtonEntity):
+    """Entity to represent if screen is put to sleep."""
+
+    entity_description = ButtonEntityDescription(
+        key="screen_sleep",
+        translation_key="screen_sleep",
+    )
+
+    async def async_press(self) -> None:
+        """Press the button."""
+        self._device.send_custom_action(CustomActions.SCREEN_SLEEP)
 
 
 class WyomingScreenWakeButton(VASatelliteEntity, ButtonEntity):

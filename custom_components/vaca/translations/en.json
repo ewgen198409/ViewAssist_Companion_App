@@ -37,6 +37,9 @@
             "screen_wake": {
                 "name": "Wake screen"
             },
+            "screen_sleep": {
+                "name": "Sleep screen"
+            },
             "wake": {
                 "name": "Wake"
             }
@@ -168,6 +171,9 @@
             },
             "alarm": {
                 "name": "Alarm"
+            },
+            "screen_on_wake_word": {
+                "name": "Screen on with wake word"
             }
         }
     }
