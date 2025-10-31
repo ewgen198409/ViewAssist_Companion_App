@@ -8,8 +8,9 @@ from typing import TYPE_CHECKING, Any
 from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import STATE_ON, EntityCategory
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import restore_state
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .const import DOMAIN
@@ -40,6 +41,7 @@ async def async_setup_entry(
         WyomingSatelliteDiagnosticsSwitch(item.device),
         WyomingSatelliteContinueConversationSwitch(item.device),
         WyomingSatelliteAlarmSwitch(item.device),
+        WyomingSatelliteScreenOnWakeWordSwitch(item.device),
     ]
 
     if capabilities := item.device.capabilities:
@@ -78,11 +80,40 @@ class BaseSwitch(VASatelliteEntity, restore_state.RestoreEntity, SwitchEntity):
         """Turn off."""
         await self.do_switch(False)
 
-    async def do_switch(self, value: bool) -> None:
+    async def do_switch(self, value: bool, send_to_device: bool = True) -> None:
         """Perform the switch action."""
         self._attr_is_on = value
         self.async_write_ha_state()
-        self._device.set_custom_setting(self.entity_description.key, self._attr_is_on)
+        if send_to_device:
+            self._device.set_custom_setting(
+                self.entity_description.key, self._attr_is_on
+            )
+
+
+class BaseFeedbackSwitch(BaseSwitch):
+    """Base class for switches that receive feedback from device."""
+
+    _listener_class = "settings_update"
+
+    async def async_added_to_hass(self) -> None:
+        """Call when entity about to be added to hass."""
+        await super().async_added_to_hass()
+
+        self.async_on_remove(
+            async_dispatcher_connect(
+                self.hass,
+                f"{DOMAIN}_{self._device.device_id}_{self._listener_class}",
+                self.status_update,
+            )
+        )
+
+    async def status_update(self, data: dict[str, Any]) -> None:
+        """Handle status update."""
+        _LOGGER.error("Received status update for %s: %s", self.entity_id, data)
+        if settings := data.get("settings"):
+            if self.entity_description.key in settings:
+                setting_state = settings[self.entity_description.key]
+                await self.do_switch(setting_state, send_to_device=False)
 
 
 class WyomingSatelliteMuteSwitch(BaseSwitch):
@@ -180,7 +211,7 @@ class WyomingSatelliteContinueConversationSwitch(BaseSwitch):
     default_on = True
 
 
-class WyomingSatelliteAlarmSwitch(BaseSwitch):
+class WyomingSatelliteAlarmSwitch(BaseFeedbackSwitch):
     """Entity to control alarm on/off."""
 
     entity_description = SwitchEntityDescription(
@@ -190,10 +221,27 @@ class WyomingSatelliteAlarmSwitch(BaseSwitch):
     )
     default_on = False
 
-    async def do_switch(self, value: bool) -> None:
+    async def do_switch(self, value: bool, send_to_device: bool = True) -> None:
         """Perform the switch action."""
         self._attr_is_on = value
         self.async_write_ha_state()
-        self._device.send_custom_action(
-            self.entity_description.key, {"activate": self._attr_is_on}
-        )
+        if send_to_device:
+            self._device.send_custom_action(
+                self.entity_description.key,
+                {
+                    "activate": self._attr_is_on,
+                    "url": "",
+                },
+            )
+
+
+class WyomingSatelliteScreenOnWakeWordSwitch(BaseSwitch):
+    """Entity to control screen on/off with wake word."""
+
+    entity_description = SwitchEntityDescription(
+        key="screen_on_wake_word",
+        translation_key="screen_on_wake_word",
+        icon="mdi:monitor-eye",
+        entity_category=EntityCategory.CONFIG,
+    )
+    default_on = True
