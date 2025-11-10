@@ -42,8 +42,7 @@ class WyomingSatelliteWakeButton(VASatelliteEntity, ButtonEntity):
     """Entity to represent if satellite is muted."""
 
     entity_description = ButtonEntityDescription(
-        key="wake",
-        translation_key="wake",
+        key="wake", translation_key="wake", icon="mdi:account-voice"
     )
 
     async def async_press(self) -> None:
@@ -55,8 +54,7 @@ class WyomingSatelliteRefreshButton(VASatelliteEntity, ButtonEntity):
     """Entity to represent if satellite is muted."""
 
     entity_description = ButtonEntityDescription(
-        key="refresh",
-        translation_key="refresh",
+        key="refresh", translation_key="refresh", icon="mdi:web-refresh"
     )
 
     async def async_press(self) -> None:
@@ -68,8 +66,7 @@ class WyomingScreenSleepButton(VASatelliteEntity, ButtonEntity):
     """Entity to represent if screen is put to sleep."""
 
     entity_description = ButtonEntityDescription(
-        key="screen_sleep",
-        translation_key="screen_sleep",
+        key="screen_sleep", translation_key="screen_sleep", icon="mdi:monitor-off"
     )
 
     async def async_press(self) -> None:
@@ -81,8 +78,7 @@ class WyomingScreenWakeButton(VASatelliteEntity, ButtonEntity):
     """Entity to represent if screen is woken up."""
 
     entity_description = ButtonEntityDescription(
-        key="screen_wake",
-        translation_key="screen_wake",
+        key="screen_wake", translation_key="screen_wake", icon="mdi:monitor-shimmer"
     )
 
     async def async_press(self) -> None:
