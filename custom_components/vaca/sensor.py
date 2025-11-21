@@ -3,19 +3,23 @@
 from __future__ import annotations
 
 from functools import reduce
-import json
 import logging
 from typing import TYPE_CHECKING, Any
 
-from homeassistant.components.sensor import RestoreSensor, SensorEntityDescription
-from homeassistant.components.sensor.const import SensorDeviceClass
+from homeassistant.components.sensor import (
+    RestoreSensor,
+    SensorDeviceClass,
+    SensorEntityDescription,
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import LIGHT_LUX, PERCENTAGE, EntityCategory
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+from homeassistant.util.dt import parse_datetime
 
 from .const import DOMAIN
+from .devices import VASatelliteDevice
 from .entity import VASatelliteEntity
 
 if TYPE_CHECKING:
@@ -33,25 +37,28 @@ async def async_setup_entry(
 ) -> None:
     """Set up sensor entities."""
     item: DomainDataItem = hass.data[DOMAIN][config_entry.entry_id]
+    device: VASatelliteDevice = item.device  # type: ignore[assignment]
 
     # Setup is only forwarded for satellites
     assert item.device is not None
 
     entities = [
-        WyomingSatelliteSTTSensor(item.device),
-        WyomingSatelliteTTSSensor(item.device),
-        WyomingSatelliteIntentSensor(item.device),
-        WyomingSatelliteOrientationSensor(item.device),
-        WyomingSatelliteBrowserPathSensor(item.device),
+        WyomingSatelliteSTTSensor(device),
+        WyomingSatelliteTTSSensor(device),
+        WyomingSatelliteIntentSensor(device),
+        WyomingSatelliteOrientationSensor(device),
+        WyomingSatelliteBrowserPathSensor(device),
     ]
 
-    if capabilities := item.device.capabilities:
+    if capabilities := device.capabilities:
         if capabilities.get("app_version"):
-            entities.append(WyomingSatelliteAppVersionSensor(item.device))
+            entities.append(WyomingSatelliteAppVersionSensor(device))
         if capabilities.get("has_battery"):
-            entities.append(WyomingSatelliteBatteryLevelSensor(item.device))
-        if item.device.has_light_sensor():
-            entities.append(WyomingSatelliteLightSensor(item.device))
+            entities.append(WyomingSatelliteBatteryLevelSensor(device))
+        if device.has_light_sensor():
+            entities.append(WyomingSatelliteLightSensor(device))
+        if capabilities.get("has_front_camera"):
+            entities.append(WyomingSatelliteLastMotionSensor(device))
 
     async_add_entities(entities)
 
@@ -122,7 +129,7 @@ class WyomingSatelliteIntentSensor(VASatelliteEntity, RestoreSensor):
     entity_description = SensorEntityDescription(
         key="intent", translation_key="intent", icon="mdi:message-bulleted"
     )
-    _attr_native_value = 0
+    _attr_native_value = UNKNOWN
 
     async def async_added_to_hass(self) -> None:
         """Call when entity about to be added to hass."""
@@ -145,7 +152,9 @@ class WyomingSatelliteIntentSensor(VASatelliteEntity, RestoreSensor):
     def status_update(self, data: dict[str, Any]) -> None:
         """Update entity."""
         if data and data.get("intent_output"):
-            value = self.get_key("intent_output.response.speech.plain.speech", data)
+            value = str(
+                self.get_key("intent_output.response.speech.plain.speech", data)
+            )
             if value:
                 if len(value) > 254:
                     # Limit the length of the value to avoid issues with Home Assistant
@@ -157,7 +166,7 @@ class WyomingSatelliteIntentSensor(VASatelliteEntity, RestoreSensor):
 
     def get_key(
         self, dot_notation_path: str, data: dict
-    ) -> dict[str, dict | str | int] | str | int:
+    ) -> dict[str, dict | str | int] | str | int | None:
         """Try to get a deep value from a dict based on a dot-notation."""
 
         try:
@@ -182,7 +191,10 @@ class _WyomingSatelliteDeviceSensorBase(VASatelliteEntity, RestoreSensor):
 
         state = await self.async_get_last_state()
         if state is not None:
-            self._attr_native_value = state.state
+            if self.entity_description.device_class == SensorDeviceClass.TIMESTAMP:
+                self._attr_native_value = self._get_timestamp_from_string(state.state)
+            else:
+                self._attr_native_value = state.state
             self.async_write_ha_state()
 
         self.async_on_remove(
@@ -203,15 +215,32 @@ class _WyomingSatelliteDeviceSensorBase(VASatelliteEntity, RestoreSensor):
             return value
         return value
 
+    def _get_timestamp_from_string(self, timestamp_str: str) -> Any:
+        """Convert timestamp string to datetime object."""
+        parsed_time = parse_datetime(timestamp_str)
+        if parsed_time:
+            return parsed_time
+        return parse_datetime("1970-01-01T00:00:00Z")
+
     @callback
     def status_update(self, data: dict[str, Any]) -> None:
         """Update entity."""
         if self._listener_class == "status_update":
             if sensors := data.get("sensors"):
                 if self.entity_description.key in sensors:
-                    self._attr_native_value = self._get_native_value(
-                        sensors[self.entity_description.key]
-                    )
+                    if (
+                        self.entity_description.device_class
+                        == SensorDeviceClass.TIMESTAMP
+                    ):
+                        # Handle timestamp conversion
+                        timestamp_str = sensors[self.entity_description.key]
+                        self._attr_native_value = self._get_timestamp_from_string(
+                            timestamp_str
+                        )
+                    else:
+                        self._attr_native_value = self._get_native_value(
+                            sensors[self.entity_description.key]
+                        )
                     self.async_write_ha_state()
         elif self._listener_class == "capabilities_update":
             if self._device.capabilities.get(self.entity_description.key):
@@ -254,11 +283,23 @@ class WyomingSatelliteBatteryLevelSensor(_WyomingSatelliteDeviceSensorBase):
 
 
 class WyomingSatelliteBrowserPathSensor(_WyomingSatelliteDeviceSensorBase):
-    """Entity to represent battery level sensor for satellite."""
+    """Entity to represent browser path sensor for satellite."""
 
     _attr_native_value = UNKNOWN
     entity_description = SensorEntityDescription(
         key="current_path", translation_key="current_path", icon="mdi:web"
+    )
+
+
+class WyomingSatelliteLastMotionSensor(_WyomingSatelliteDeviceSensorBase):
+    """Entity to represent last motion for satellite."""
+
+    _attr_native_value = UNKNOWN
+    entity_description = SensorEntityDescription(
+        key="last_motion",
+        translation_key="last_motion",
+        icon="mdi:motion-sensor",
+        device_class=SensorDeviceClass.TIMESTAMP,
     )
 
 

@@ -117,6 +117,18 @@
                     "bubble": "Bubble",
                     "ding": "Ding"
                 }
+            },
+            "screen_timeout": {
+                "name": "Screen timeout",
+                "state": {
+                    "15": "15 seconds",
+                    "30": "30 seconds",
+                    "60": "1 minute",
+                    "120": "2 minutes",
+                    "300": "5 minutes",
+                    "600": "10 minutes",
+                    "1800": "30 minutes"
+                }
             }
         },
         "sensor": {
@@ -148,6 +160,9 @@
             },
             "current_path": {
                 "name": "Current path"
+            },
+            "last_motion": {
+                "name": "Last motion"
             }
         },
         "switch": {
@@ -161,7 +176,7 @@
                 "name": "Auto brightness"
             },
             "screen_always_on": {
-                "name": "Keep screen on"
+                "name": "Screen always on"
             },
             "do_not_disturb": {
                 "name": "Do not disturb"
@@ -178,8 +193,20 @@
             "alarm": {
                 "name": "Alarm"
             },
+            "enable_motion_detection": {
+                "name": "Motion detection"
+            },
             "screen_on_wake_word": {
                 "name": "Screen on with wake word"
+            },
+            "screen_on_bump": {
+                "name": "Screen on with bump"
+            },
+            "screen_on_proximity": {
+                "name": "Screen on with proximity"
+            },
+            "screen_on_motion": {
+                "name": "Screen on with motion"
             }
         }
     }

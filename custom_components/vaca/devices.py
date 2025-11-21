@@ -99,8 +99,24 @@ class VASatelliteDevice(SatelliteDevice):
 
     def has_light_sensor(self) -> bool:
         """Check if the device has a light sensor."""
-        if sensors := self.capabilities.get("sensors"):
+        if self.capabilities and (sensors := self.capabilities.get("sensors")):
             for sensor in sensors:
                 if sensor.get("type") == 5:  # Light sensor type
+                    return True
+        return False
+
+    def supportBump(self) -> bool:
+        """Check if the device supports bump proximity feature."""
+        if self.capabilities and (sensors := self.capabilities.get("sensors")):
+            for sensor in sensors:
+                if sensor.get("type") == 1:  # Accelerometer type
+                    return True
+        return False
+
+    def supportProximity(self) -> bool:
+        """Check if the device supports bump proximity feature."""
+        if self.capabilities and (sensors := self.capabilities.get("sensors")):
+            for sensor in sensors:
+                if sensor.get("type") == 8:  # Proximity type
                     return True
         return False
