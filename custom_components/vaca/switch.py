@@ -14,6 +14,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .const import DOMAIN
+from .devices import VASatelliteDevice
 from .entity import VASatelliteEntity
 
 if TYPE_CHECKING:
@@ -29,24 +30,35 @@ async def async_setup_entry(
 ) -> None:
     """Set up switch entities."""
     item: DomainDataItem = hass.data[DOMAIN][config_entry.entry_id]
+    device: VASatelliteDevice = item.device  # type: ignore[assignment]
 
     # Setup is only forwarded for satellites
-    assert item.device is not None
+    assert device is not None
     entities = [
-        WyomingSatelliteMuteSwitch(item.device),
-        WyomingSatelliteSwipeToRefreshSwitch(item.device),
-        WyomingSatelliteScreenAutoBrightnessSwitch(item.device),
-        WyomingSatelliteScreenAlwaysOnSwitch(item.device),
-        WyomingSatelliteDarkModeSwitch(item.device),
-        WyomingSatelliteDiagnosticsSwitch(item.device),
-        WyomingSatelliteContinueConversationSwitch(item.device),
-        WyomingSatelliteAlarmSwitch(item.device),
-        WyomingSatelliteScreenOnWakeWordSwitch(item.device),
+        WyomingSatelliteMuteSwitch(device),
+        WyomingSatelliteSwipeToRefreshSwitch(device),
+        WyomingSatelliteScreenAutoBrightnessSwitch(device),
+        WyomingSatelliteScreenAlwaysOnSwitch(device),
+        WyomingSatelliteDarkModeSwitch(device),
+        WyomingSatelliteDiagnosticsSwitch(device),
+        WyomingSatelliteContinueConversationSwitch(device),
+        WyomingSatelliteAlarmSwitch(device),
+        WyomingSatelliteScreenOnWakeWordSwitch(device),
     ]
 
-    if capabilities := item.device.capabilities:
+    if capabilities := device.capabilities:
         if capabilities.get("has_dnd"):
-            entities.append(WyomingSatelliteDNDSwitch(item.device))
+            entities.append(WyomingSatelliteDNDSwitch(device))
+
+    if device.supportBump():
+        entities.append(WyomingSatelliteScreenOnBumpSwitch(device))
+
+    if device.supportProximity():
+        entities.append(WyomingSatelliteScreenOnProximitySwitch(device))
+
+    if device.capabilities and device.capabilities.get("has_front_camera"):
+        entities.append(WyomingSatelliteEnableMotionDetectionSwitch(device))
+        entities.append(WyomingSatelliteScreenOnMotionSwitch(device))
 
     if entities:
         async_add_entities(entities)
@@ -65,10 +77,10 @@ class BaseSwitch(VASatelliteEntity, restore_state.RestoreEntity, SwitchEntity):
         state = await self.async_get_last_state()
 
         # Set restore state or default
-        if self.default_on:
-            self._attr_is_on = (state is None) or (state.state == STATE_ON)
+        if state is None:
+            self._attr_is_on = self.default_on
         else:
-            self._attr_is_on = (state is not None) and (state.state == STATE_ON)
+            self._attr_is_on = state.state == STATE_ON
 
         await self.do_switch(self._attr_is_on)
 
@@ -244,3 +256,51 @@ class WyomingSatelliteScreenOnWakeWordSwitch(BaseSwitch):
         entity_category=EntityCategory.CONFIG,
     )
     default_on = True
+
+
+class WyomingSatelliteScreenOnBumpSwitch(BaseSwitch):
+    """Entity to control screen on with bump."""
+
+    entity_description = SwitchEntityDescription(
+        key="screen_on_bump",
+        translation_key="screen_on_bump",
+        icon="mdi:gesture-tap",
+        entity_category=EntityCategory.CONFIG,
+    )
+    default_on = False
+
+
+class WyomingSatelliteScreenOnProximitySwitch(BaseSwitch):
+    """Entity to control screen on with proximity."""
+
+    entity_description = SwitchEntityDescription(
+        key="screen_on_proximity",
+        translation_key="screen_on_proximity",
+        icon="mdi:radar",
+        entity_category=EntityCategory.CONFIG,
+    )
+    default_on = False
+
+
+class WyomingSatelliteEnableMotionDetectionSwitch(BaseSwitch):
+    """Entity to control motion detection."""
+
+    entity_description = SwitchEntityDescription(
+        key="enable_motion_detection",
+        translation_key="enable_motion_detection",
+        icon="mdi:motion-sensor",
+        entity_category=EntityCategory.CONFIG,
+    )
+    default_on = False
+
+
+class WyomingSatelliteScreenOnMotionSwitch(BaseSwitch):
+    """Entity to control screen on with motion."""
+
+    entity_description = SwitchEntityDescription(
+        key="screen_on_motion",
+        translation_key="screen_on_motion",
+        icon="mdi:motion-sensor",
+        entity_category=EntityCategory.CONFIG,
+    )
+    default_on = False

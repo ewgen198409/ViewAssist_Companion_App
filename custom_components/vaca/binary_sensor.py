@@ -38,6 +38,8 @@ async def async_setup_entry(
 
     entities = []
 
+    entities.append(WyomingSatelliteScreenOnBinarySensor(item.device))
+
     if capabilities := item.device.capabilities:
         if capabilities.get("has_battery"):
             entities.append(WyomingSatelliteBatteryChargingBinarySensor(item.device))
@@ -98,4 +100,12 @@ class WyomingSatelliteBatteryChargingBinarySensor(
         key="battery_charging",
         translation_key="battery_charging",
         device_class=BinarySensorDeviceClass.BATTERY_CHARGING,
+    )
+
+
+class WyomingSatelliteScreenOnBinarySensor(_WyomingSatelliteDeviceBinarySensorBase):
+    """Entity to represent screen on status sensor for satellite."""
+
+    entity_description = BinarySensorEntityDescription(
+        key="screen_on", translation_key="screen_on", icon="mdi:monitor"
     )

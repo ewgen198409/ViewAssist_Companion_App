@@ -51,6 +51,7 @@ async def async_setup_entry(
             WyomingSatelliteVadSensitivitySelect(hass, item.device),
             WyomingSatelliteWakeWordSelect(item.device),
             WyomingSatelliteWakeWordSoundSelect(item.device),
+            WyomingSatelliteScreenTimeoutSelect(item.device),
         ]
     )
 
@@ -132,11 +133,13 @@ class WyomingSatelliteWakeWordSelect(
     @property
     def options(self) -> list[str]:
         """Return the list of available wake word options."""
-        return self.get_wake_word_options()
+        options = ["None"]
+        options.extend(self.get_wake_word_options())
+        return options
 
     def get_wake_word_options(self) -> list[str]:
         """Return the list of available wake word options."""
-        wake_options: list[dict[str, str]] = []
+        wake_options: list[str] = []
         if self._device.info and self._device.info.wake:
             for wake_program in self._device.info.wake:
                 if wake_program.name == "available_wake_words":
@@ -191,3 +194,32 @@ class WyomingSatelliteWakeWordSoundSelect(
         self._attr_current_option = option
         self.async_write_ha_state()
         self._device.set_custom_setting("wake_word_sound", option)
+
+
+class WyomingSatelliteScreenTimeoutSelect(
+    VASatelliteEntity, SelectEntity, restore_state.RestoreEntity
+):
+    """Entity to represent screen timeout setting."""
+
+    entity_description = SelectEntityDescription(
+        key="screen_timeout",
+        translation_key="screen_timeout",
+        entity_category=EntityCategory.CONFIG,
+    )
+    _attr_should_poll = False
+    _attr_current_option = "60"
+    _attr_options = ["15", "30", "60", "120", "300", "600", "1800"]
+
+    async def async_added_to_hass(self) -> None:
+        """When entity is added to Home Assistant."""
+        await super().async_added_to_hass()
+
+        state = await self.async_get_last_state()
+        if state is not None and state.state in self.options:
+            await self.async_select_option(state.state)
+
+    async def async_select_option(self, option: str) -> None:
+        """Select an option."""
+        self._attr_current_option = option
+        self.async_write_ha_state()
+        self._device.set_custom_setting(self.entity_description.key, int(option))

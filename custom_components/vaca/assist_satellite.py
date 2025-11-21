@@ -115,6 +115,24 @@ class ViewAssistSatelliteEntity(WyomingAssistSatellite, VASatelliteEntity):
         # stream tts var to allow interupt and cancel remaining response
         self.stream_tts = False
 
+    async def on_restart(self) -> None:
+        """Block until pipeline loop will be restarted."""
+        _LOGGER.warning(
+            "Satellite %s has been disconnected. Reconnecting in %s second(s)",
+            self.entity_id.replace("assist_satellite.", ""),
+            _RECONNECT_SECONDS,
+        )
+        await asyncio.sleep(_RESTART_SECONDS)
+
+    async def on_reconnect(self) -> None:
+        """Block until a reconnection attempt should be made."""
+        _LOGGER.debug(
+            "Failed to connect to %s satellite. Reconnecting in %s second(s)",
+            self.entity_id.replace("assist_satellite.", ""),
+            _RECONNECT_SECONDS,
+        )
+        await asyncio.sleep(_RECONNECT_SECONDS)
+
     async def async_will_remove_from_hass(self) -> None:
         """Run when entity will be removed from hass."""
         try:
