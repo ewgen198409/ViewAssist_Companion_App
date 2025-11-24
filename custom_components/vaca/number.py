@@ -11,6 +11,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .const import DOMAIN
+from .devices import VASatelliteDevice
 from .entity import VASatelliteEntity
 
 if TYPE_CHECKING:
@@ -28,21 +29,29 @@ async def async_setup_entry(
 ) -> None:
     """Set up number entities."""
     item: DomainDataItem = hass.data[DOMAIN][config_entry.entry_id]
+    device: VASatelliteDevice = item.device  # type: ignore[assignment]
 
     # Setup is only forwarded for satellites
     assert item.device is not None
 
-    async_add_entities(
+    entities = []
+
+    entities.extend(
         [
-            WyomingSatelliteMicGainNumber(item.device),
-            WyomingSatelliteNotificationVolumeNumber(item.device),
-            WyomingSatelliteMusicVolumeNumber(item.device),
-            WyomingSatelliteDuckingVolumeNumber(item.device),
-            WyomingSatelliteScreenBrightnessNumber(item.device),
-            WyomingSatelliteWakeWordThresholdNumber(item.device),
-            WyomingSatelliteZoomLevelNumber(item.device),
+            WyomingSatelliteMicGainNumber(device),
+            WyomingSatelliteNotificationVolumeNumber(device),
+            WyomingSatelliteMusicVolumeNumber(device),
+            WyomingSatelliteDuckingVolumeNumber(device),
+            WyomingSatelliteScreenBrightnessNumber(device),
+            WyomingSatelliteWakeWordThresholdNumber(device),
+            WyomingSatelliteZoomLevelNumber(device),
         ]
     )
+
+    if device.capabilities and device.capabilities.get("has_front_camera"):
+        entities.append(WyomingSatelliteMotionDetectionSensitivityNumber(device))
+
+    async_add_entities(entities)
 
 
 class WyomingSatelliteMicGainNumber(VASatelliteEntity, RestoreNumber):
@@ -263,3 +272,37 @@ class WyomingSatelliteZoomLevelNumber(VASatelliteEntity, RestoreNumber):
         self._device.set_custom_setting(
             self.entity_description.key, int(value * 100) + 60 if value > 0 else 0
         )
+
+
+class WyomingSatelliteMotionDetectionSensitivityNumber(
+    VASatelliteEntity, RestoreNumber
+):
+    """Entity to represent zoom level."""
+
+    entity_description = NumberEntityDescription(
+        key="motion_detection_sensitivity",
+        translation_key="motion_detection_sensitivity",
+        icon="mdi:tune-variant",
+        entity_category=EntityCategory.CONFIG,
+    )
+    _attr_should_poll = False
+    _attr_native_min_value = 0
+    _attr_native_max_value = 100
+    _attr_native_step = 1
+    _attr_native_value = 70
+
+    async def async_added_to_hass(self) -> None:
+        """When entity is added to Home Assistant."""
+        await super().async_added_to_hass()
+
+        state = await self.async_get_last_state()
+        if state is not None:
+            await self.async_set_native_value(float(state.state))
+
+    async def async_set_native_value(self, value: float) -> None:
+        """Set new value."""
+        value = max(0, min(self._attr_native_max_value, value))
+        self._attr_native_value = value
+        self.async_write_ha_state()
+        # Sensitivity is sent as 0-50 scale
+        self._device.set_custom_setting(self.entity_description.key, int(value / 2))

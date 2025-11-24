@@ -67,6 +67,9 @@
             "notification_volume": {
                 "name": "Voice volume"
             },
+            "motion_detection_sensitivity": {
+                "name": "Motion detection sensitivity"
+            },
             "music_volume": {
                 "name": "Music volume"
             },
