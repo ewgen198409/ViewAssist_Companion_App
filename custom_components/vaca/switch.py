@@ -193,7 +193,7 @@ class WyomingSatelliteDNDSwitch(BaseSwitch):
     entity_description = SwitchEntityDescription(
         key="do_not_disturb",
         translation_key="do_not_disturb",
-        icon="mdi:do-not-disturb",
+        icon="mdi:minus-circle-outline",
     )
     default_on = False
 
