@@ -197,6 +197,11 @@ class WyomingSatelliteDNDSwitch(BaseSwitch):
     )
     default_on = False
 
+    @property
+    def icon(self) -> str:
+        """Return the icon to use in the frontend."""
+        return "mdi:minus-circle-outline"
+
 
 class WyomingSatelliteDiagnosticsSwitch(BaseSwitch):
     """Entity to control diagnostics overlay on/off."""
